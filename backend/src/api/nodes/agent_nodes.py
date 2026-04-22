@@ -51,18 +51,22 @@ async def triage_node(state: AgentState):
     """
     # Run the triage agent on the user's input
     # Runner.run is the standard way to invoke agents in the agents library
-    result = await Runner.run(
-        triage_agent,
-        run_config=config,
-        input=state["user_input"]
-    )
+    try:
+        result = await Runner.run(
+            triage_agent,
+            run_config=config,
+            input=state["user_input"]
+        )
+        # Extract the category from the agent's response
+        # .strip() removes leading/trailing whitespace
+        # .lower() normalizes to lowercase for consistent matching
+        state["category"] = result.final_output.strip().lower()
 
-    # Extract the category from the agent's response
-    # .strip() removes leading/trailing whitespace
-    # .lower() normalizes to lowercase for consistent matching
-    state["category"] = result.final_output.strip().lower()
+        return state   
+    except Exception as e:
+        print(f"Triage failed: {e}")
+        return state
 
-    return state
 
 
 async def routing_node(state: AgentState):
@@ -93,28 +97,32 @@ async def routing_node(state: AgentState):
         4. Store the agent's response in state
         5. Return updated state to continue in graph
     """
-    # Read the category determined by triage
-    category = state["category"]
+    try:
+        # Read the category determined by triage
+        category = state["category"]
 
-    # Select the specialist agent based on category
-    # Using simple keyword matching for robustness
-    if "billing" in category:
-        agent = billing_agent
-    elif "refund" in category:
-        agent = refund_agent
-    else:
-        # Default to general agent for any unrecognized category
-        agent = general_agent
+        # Select the specialist agent based on category
+        # Using simple keyword matching for robustness
+        if "billing" in category:
+            agent = billing_agent
+        elif "refund" in category:
+            agent = refund_agent
+        else:
+            # Default to general agent for any unrecognized category
+            agent = general_agent
 
-    # Run the selected specialist agent
-    result = await Runner.run(
-        agent,
-        run_config=config,
-        input=state["user_input"]
-    )
+        # Run the selected specialist agent
+        result = await Runner.run(
+            agent,
+            run_config=config,
+            input=state["user_input"]
+        )
 
-    # Store the specialist's response
-    # .strip() removes any extra whitespace from the response
-    state["response"] = result.final_output.strip()
+        # Store the specialist's response
+        # .strip() removes any extra whitespace from the response
+        state["response"] = result.final_output.strip()
 
-    return state
+        return state
+    except Exception as e:
+        print(f"Routing failed: {e}")
+        return state

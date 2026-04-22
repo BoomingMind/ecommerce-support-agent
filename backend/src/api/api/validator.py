@@ -57,54 +57,58 @@ async def validation_node(state):
     """
     # Create a Validator agent dynamically for this validation pass
     # Using a fresh agent each time ensures clean state
-    validator = Agent(
-        name="Validator",
+    try:
+        validator = Agent(
+            name="Validator",
 
-        # Use the same model as other agents for consistency
-        model=model,
+            # Use the same model as other agents for consistency
+            model=model,
 
-        # Instructions for the validator - STRICT output format
-        instructions="""
-        You are a Response Polish Agent. Your ONLY job is to improve customer support responses.
+            # Instructions for the validator - STRICT output format
+            instructions="""
+            You are a Response Polish Agent. Your ONLY job is to improve customer support responses.
 
-        RULES - FOLLOW THESE EXACTLY:
-        1. You will receive a customer support response that may need minor polishing
-        2. If the response is good, return it EXACTLY as-is with NO changes
-        3. If the response has issues, fix ONLY the problematic parts
-        4. Return the FINAL response that should be shown to the customer
+            RULES - FOLLOW THESE EXACTLY:
+            1. You will receive a customer support response that may need minor polishing
+            2. If the response is good, return it EXACTLY as-is with NO changes
+            3. If the response has issues, fix ONLY the problematic parts
+            4. Return the FINAL response that should be shown to the customer
 
-        WHAT TO RETURN:
-        - Return ONLY the customer-facing response text
-        - Do NOT include analysis, evaluation, or commentary
-        - Do NOT say "The response is:" or similar prefixes
-        - Do NOT explain what you changed or why
-        - Do NOT add evaluation bullet points like "Clear:", "Correct:", "Helpful:"
-        - Just return the polished response itself
+            WHAT TO RETURN:
+            - Return ONLY the customer-facing response text
+            - Do NOT include analysis, evaluation, or commentary
+            - Do NOT say "The response is:" or similar prefixes
+            - Do NOT explain what you changed or why
+            - Do NOT add evaluation bullet points like "Clear:", "Correct:", "Helpful:"
+            - Just return the polished response itself
 
-        EXAMPLES:
+            EXAMPLES:
 
-        Input: "The response is: - Clear: The language used is straightforward... "
-        Output: "I understand your concern about the duplicate charge..."
+            Input: "The response is: - Clear: The language used is straightforward... "
+            Output: "I understand your concern about the duplicate charge..."
 
-        Input: "Your refund has been approved and will process in 5-7 business days."
-        Output: "Your refund has been approved and will process in 5-7 business days."
+            Input: "Your refund has been approved and will process in 5-7 business days."
+            Output: "Your refund has been approved and will process in 5-7 business days."
 
-        Input: "The response is: - Clear: ... - Correct: ... - Helpful: ..."
-        Output: (extract and return only the actual response content)
-        """,
-    )
+            Input: "The response is: - Clear: ... - Correct: ... - Helpful: ..."
+            Output: (extract and return only the actual response content)
+            """,
+        )
 
-    # Run the validator on the current response
-    # This passes the response text as input to the validator agent
-    result = await Runner.run(
-        validator,
-        input=state["response"],     # The current response to validate
-        run_config=config            # Standard run configuration
-    )
+        # Run the validator on the current response
+        # This passes the response text as input to the validator agent
+        result = await Runner.run(
+            validator,
+            input=state["response"],     # The current response to validate
+            run_config=config            # Standard run configuration
+        )
 
-    # Update the state with the validator's (potentially improved) response
-    # result.final_output contains the validator's response
-    state["response"] = result.final_output
+        # Update the state with the validator's (potentially improved) response
+        # result.final_output contains the validator's response
+        state["response"] = result.final_output
 
-    # Return the updated state to continue in the graph
-    return state
+        # Return the updated state to continue in the graph
+        return state
+    except Exception as e:
+        print(f"Validation failed: {e}")
+        return state

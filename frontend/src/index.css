@@ -1,0 +1,32 @@
+/**
+ * Global Styles
+ * ==============
+ * Global CSS styles for the Customer Support Chat application.
+ * Uses Tailwind CSS v4 with the new @import syntax.
+ */
+
+/* Import Tailwind CSS - pulls in all base styles, components, and utilities */
+@import "tailwindcss";
+
+/* =============================================================================
+   Custom Scrollbar Styling
+   ============================================================================= */
+
+/* Style the chat window's vertical scrollbar for a polished look */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;  /* Narrow scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;  /* No track background */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;  /* Light gray thumb */
+  border-radius: 3px;  /* Rounded corners */
+}
+
+/* Darker gray on hover for better interactivity feedback */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

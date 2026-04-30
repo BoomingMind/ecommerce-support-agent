@@ -17,6 +17,7 @@ which routes the graph back to dynamic_execution_node for a fresh attempt.
 
 import json
 from backend.src.api.api.config import AgentState, model, config, Runner
+from backend.tools.product_tool import fetch_mockapi_products
 
 # Specialist agents
 from backend.src.api.api.triage_agent import triage_agent
@@ -131,13 +132,25 @@ async def dynamic_execution_node(state: AgentState) -> AgentState:
 
             try:
                 context_text = state["intermediate_results"].get("context", "")
+                
+                # Fetch products if sales agent is called
+                product_context = ""
+                if agent_name == "sales":
+                    products = await fetch_mockapi_products()
+                    state["retrieved_products"] = products
+                    if products:
+                        product_context = "\n\nAvailable Products from Database:\n" + "\n".join([
+                            f"- {p.get('name', 'Unknown')}: ${p.get('price', '0')} ({p.get('category', 'General')})" 
+                            for p in products
+                        ])
+
                 if context_text and agent_name != "context":
                     agent_input = (
                         f"User query: {state['user_input']}\n\n"
-                        f"Known context:\n{context_text}"
+                        f"Known context:\n{context_text}{product_context}"
                     )
                 else:
-                    agent_input = state["user_input"]
+                    agent_input = f"{state['user_input']}{product_context}"
 
                 result = await Runner.run(
                     agent,

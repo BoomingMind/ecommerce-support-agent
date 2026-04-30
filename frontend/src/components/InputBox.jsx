@@ -1,62 +1,93 @@
 /**
- * InputBox Component
- * ==================
- * Text input form for the chat application.
- * Features:
- * - Text input with placeholder
- * - Send button with icon
- * - Disabled state while loading
- *
- * Props:
- * - onSend: Callback function to handle message submission
- * - isLoading: Boolean to disable input during API calls
+ * InputBox Component - Neo-Cybernetic Edition
+ * =============================================
+ * Floating message input with glassmorphism styling
+ * and smooth interactions.
  */
 
-import React, { useState } from "react";
-import { Send } from "lucide-react";  // Lucide icon for send button
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import React, { useState, useRef } from "react";
+import { Send, Sparkles } from "lucide-react";
 
 function InputBox({ onSend, isLoading }) {
-  // Local state for the input field value
   const [input, setInput] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef(null);
 
-  /**
-   * Handles form submission
-   * Prevents default browser behavior and sends message if valid
-   */
   const handleSubmit = (e) => {
-    e.preventDefault();  // Prevent page reload on form submit
+    e.preventDefault();
 
-    // Only send if input is not empty and not currently loading
     if (input.trim() && !isLoading) {
-      onSend(input);      // Call parent handler
-      setInput("");       // Clear input after sending
+      onSend(input);
+      setInput("");
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   };
 
-  return (
-    // Form wraps input and button for native submit handling
-    <form onSubmit={handleSubmit} className="flex w-full gap-3 p-2">
-      {/* Text input field */}
-      <Input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your message..."
-        disabled={isLoading}  // Disable during API calls
-        className="flex-1 rounded-xl border border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-400 focus:border-indigo-400"
-      />
+  const handleKeyDown = (e) => {
+    // Allow Shift+Enter for multiline, Enter to send
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
 
-      {/* Send button */}
-      <Button
-        type="submit"
-        disabled={!input.trim() || isLoading}  // Disable if empty or loading
-        className="send-ripple h-11 w-11 rounded-xl p-0 bg-indigo-500 text-white hover:bg-indigo-400"
-      >
-        {/* Send icon from lucide-react */}
-        <Send className="h-4 w-4" />
-      </Button>
-    </form>
+  const isDisabled = !input.trim() || isLoading;
+
+  return (
+    <div className="floating-input-container">
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <div className="floating-input focus-glow">
+          {/* Input Field */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Ask me anything..."
+            disabled={isLoading}
+            className="flex-1"
+          />
+
+          {/* Thinking Indicator */}
+          {isLoading && (
+            <div className="flex items-center gap-1 px-2">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.2s" }} />
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.4s" }} />
+              </div>
+            </div>
+          )}
+
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={isDisabled}
+            className="send-button relative"
+            title={isLoading ? "Processing..." : "Send message"}
+          >
+            {isLoading ? (
+              <Sparkles size={16} className="animate-spin opacity-60" />
+            ) : (
+              <Send size={16} />
+            )}
+          </button>
+        </div>
+
+        {/* Helper Text */}
+        {isFocused && !isLoading && (
+          <p className="mt-2 text-xs text-slate-400 text-center">
+            Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/20 font-mono">Enter</kbd> to
+            send, <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/20 font-mono">Shift+Enter</kbd> for new line
+          </p>
+        )}
+      </form>
+    </div>
   );
 }
 

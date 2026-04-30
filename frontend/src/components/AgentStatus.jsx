@@ -1,90 +1,100 @@
 /**
- * AgentStatus Component
- * =====================
- * Displays a badge indicating which agent is currently active.
- * Shows an animated pulsing dot when an agent is processing.
- *
- * The agent types are:
- * - triage: First responder, classifies the query
- * - billing: Handles billing-related inquiries
- * - refund: Handles refund requests
- * - general: Handles general inquiries
- * - validation: Validates the final response
- *
- * Props:
- * - currentAgent: String representing the active agent (null when idle)
+ * AgentStatus Component - Neo-Cybernetic Edition
+ * ===============================================
+ * Displays real-time agent status with thinking indicators
+ * and glassmorphic design.
  */
 
 import React from "react";
 import { cn } from "@/lib/utils";
 
-// Agent display configuration
-// Each agent has a label and color scheme for its badge
 const AGENT_INFO = {
   triage: {
-    label: "Triage Agent",
-    color: "bg-blue-50 text-blue-600 border-blue-200"
+    label: "Triage",
+    glow: "from-blue-500 to-cyan-500",
   },
   router: {
-    label: "Router Agent",
-    color: "bg-indigo-50 text-indigo-600 border-indigo-200"
+    label: "Router",
+    glow: "from-indigo-500 to-purple-500",
   },
   context: {
-    label: "Context Agent",
-    color: "bg-cyan-50 text-cyan-700 border-cyan-200"
+    label: "Context",
+    glow: "from-cyan-500 to-blue-500",
   },
   support: {
-    label: "Support Agent",
-    color: "bg-orange-50 text-orange-600 border-orange-200"
+    label: "Support",
+    glow: "from-orange-500 to-red-500",
   },
   sales: {
-    label: "Sales Agent",
-    color: "bg-pink-50 text-pink-600 border-pink-200"
+    label: "Sales",
+    glow: "from-pink-500 to-rose-500",
   },
   billing: {
-    label: "Billing Agent",
-    color: "bg-violet-50 text-violet-600 border-violet-200"
+    label: "Billing",
+    glow: "from-violet-500 to-purple-500",
   },
   refund: {
-    label: "Refund Agent",
-    color: "bg-emerald-50 text-emerald-600 border-emerald-200"
+    label: "Refund",
+    glow: "from-emerald-500 to-green-500",
   },
   general: {
-    label: "General Agent",
-    color: "bg-slate-50 text-slate-600 border-slate-200"
+    label: "General",
+    glow: "from-slate-500 to-blue-500",
   },
   supervisor: {
-    label: "Supervisor Agent",
-    color: "bg-amber-50 text-amber-600 border-amber-200"
+    label: "Supervisor",
+    glow: "from-amber-500 to-orange-500",
   },
 };
 
 function AgentStatus({ currentAgent }) {
-  // Don't render anything when no agent is active
   if (!currentAgent) return null;
 
-  // Get agent info from the config, with fallback for unknown agents
   const info = AGENT_INFO[currentAgent] || {
     label: currentAgent,
-    color: "bg-slate-50 text-slate-600 border-slate-200",
+    glow: "from-primary to-secondary",
   };
 
   return (
-    // Badge container with dynamic color classes
-    <div className={cn(
-      "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border",
-      info.color
-    )}>
-      {/* Animated pulsing dot to indicate active processing */}
-      <span className="relative flex h-2 w-2">
-        {/* Outer ring - expands and fades (the "ping") */}
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"></span>
-        {/* Inner dot - solid center */}
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
-      </span>
+    <div className="flex items-center gap-3">
+      {/* Status Badge */}
+      <div className="relative overflow-hidden rounded-lg border border-white/20 bg-surface-glass/50 px-4 py-2 backdrop-blur-glass">
+        {/* Animated Background Gradient */}
+        <div
+          className={cn(
+            "absolute inset-0 bg-gradient-to-r opacity-0 transition-opacity duration-500 group-hover:opacity-20",
+            info.glow
+          )}
+        />
 
-      {/* Agent label text */}
-      {info.label}
+        {/* Content */}
+        <div className="relative flex items-center gap-2">
+          {/* Thinking Indicator */}
+          <div className="agent-thinking-indicator">
+            <div className="agent-thinking-dot" />
+            <div className="agent-thinking-dot" />
+            <div className="agent-thinking-dot" />
+          </div>
+
+          {/* Agent Label */}
+          <span className="text-xs font-semibold text-slate-100">
+            {info.label}
+          </span>
+        </div>
+
+        {/* Glow Effect */}
+        <div
+          className={cn(
+            "absolute inset-0 -z-10 rounded-lg opacity-30 blur-lg",
+            `bg-gradient-to-r ${info.glow}`
+          )}
+        />
+      </div>
+
+      {/* Pulse Indicator */}
+      <div className="flex h-3 w-3 items-center justify-center">
+        <div className="agent-status-badge" />
+      </div>
     </div>
   );
 }

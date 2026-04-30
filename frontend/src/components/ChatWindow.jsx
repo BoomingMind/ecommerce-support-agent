@@ -1,127 +1,147 @@
 /**
- * ChatWindow Component
- * ====================
- * Displays the chat message history with support for:
- * - User messages (right-aligned)
- * - AI messages (left-aligned)
- * - Typing indicator (animated dots while waiting)
- * - Auto-scrolling to latest message
- *
- * Props:
- * - messages: Array of message objects { text: string, isUser: boolean }
- * - isTyping: Boolean to show/hide typing indicator
+ * ChatWindow Component - Neo-Cybernetic Edition
+ * ==============================================
+ * Full-height immersive chat terminal with center-aligned
+ * threading and enhanced UX with thinking indicators.
  */
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
+import { MessageCircle, RefreshCw, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 import MessageBubble from "./MessageBubble";
 
-function ChatWindow({ messages, isTyping, onRetry, activeAgentName }) {
-  // Ref for auto-scrolling to bottom of chat
+function ChatWindow({
+  messages,
+  isTyping,
+  onRetry,
+  activeAgentName,
+  onScrollUp,
+  highlightedMessageIds = [],
+}) {
   const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
+  const [canLoadMore, setCanLoadMore] = useState(true);
 
-  /**
-   * Scrolls the chat view to the most recent message
-   * Called whenever messages change or new typing indicator appears
-   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Effect: Scroll to bottom whenever messages or typing state changes
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Handle infinite scroll up
+  const handleScroll = (e) => {
+    const element = e.target;
+    if (element.scrollTop === 0 && canLoadMore && onScrollUp) {
+      setCanLoadMore(false);
+      onScrollUp(() => setCanLoadMore(true));
+    }
+  };
+
   return (
-    // Scrollable container with custom scrollbar styling
-    <div className="flex-1 overflow-y-auto px-4 py-6 custom-scrollbar">
-
-      {/* Centered content area with max-width constraint */}
-      <div className="flex flex-col gap-4 max-w-3xl mx-auto">
-
-        {/* Empty state - shown when no messages exist */}
+    <div
+      ref={containerRef}
+      className="chat-terminal flex-1 flex flex-col"
+    >
+      {/* Chat Messages */}
+      <div
+        className="chat-messages custom-scrollbar"
+        onScroll={handleScroll}
+      >
+        {/* Empty State */}
         {messages.length === 0 && (
-          <div className="text-center py-16">
-            {/* Chat icon in a neutral background circle */}
-            <div className="glass-surface w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-slate-300"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
+          <div className="flex flex-col items-center justify-center text-center py-20 px-4 stagger-1">
+            <div className="mb-4 relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-2xl blur-2xl opacity-20" />
+              <div className="relative glass-card rounded-2xl p-4">
+                <MessageCircle size={32} className="text-primary" />
+              </div>
             </div>
 
-            {/* Welcome heading */}
-            <h2 className="text-lg font-semibold text-slate-100">
-              Customer Support
+            <h2 className="text-2xl font-bold text-slate-100 mb-2 stagger-2">
+              E-Commerce AI Support
             </h2>
 
-            {/* Subtitle */}
-            <p className="text-slate-400 mt-1">
-              How can I help you today?
+            <p className="text-slate-400 mb-6 stagger-3 max-w-sm">
+              Real-time multi-agent orchestration dashboard. Ask anything about
+              your account, billing, or orders.
             </p>
+
+            <div className="stagger-4 flex gap-2 flex-wrap justify-center">
+              {[
+                "📦 Track Orders",
+                "💳 Billing Help",
+                "🔄 Returns & Refunds",
+                "🛍️ Product Info",
+              ].map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 rounded-full text-xs border border-white/10 bg-white/5 text-slate-300"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Render all messages in the conversation */}
+        {/* Message Thread */}
         {messages.map((message, index) => (
-          <MessageBubble
+          <div
             key={message.id || index}
-            message={message.text}
-            isUser={message.isUser}
-            isError={Boolean(message.isError)}
-          />
+            className={cn(
+              "flex w-full transition-all duration-300",
+              message.isUser ? "justify-end" : "justify-start",
+              highlightedMessageIds?.includes(message.id) &&
+                "message-highlighted"
+            )}
+          >
+            <MessageBubble
+              message={message.text}
+              isUser={message.isUser}
+              isError={Boolean(message.isError)}
+              agentName={activeAgentName && !message.isUser ? activeAgentName : null}
+              isHighlighted={highlightedMessageIds?.includes(message.id)}
+            />
+          </div>
         ))}
 
-        {/* Typing indicator - shown when AI is "thinking" or responding */}
+        {/* Typing Indicator */}
         {isTyping && (
-          <div className="flex justify-start">
-            <div className="glass-card rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-white/10">
+          <div className="flex justify-start w-full">
+            <div className="message-bubble message-ai max-w-[60%]">
               {activeAgentName && (
-                <p className="mb-2 text-[11px] font-medium text-slate-300">
-                  {activeAgentName} is responding...
+                <p className="text-xs font-medium text-slate-300 mb-2 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  {activeAgentName} is thinking...
                 </p>
               )}
-              {/* Three animated dots with staggered bounce animation */}
-              <div className="flex gap-1.5 items-center">
-                <span
-                  className="w-2 h-2 bg-indigo-300 rounded-full animate-bounce"
-                  style={{ animationDelay: "0ms" }}
-                />
-                <span
-                  className="w-2 h-2 bg-indigo-300 rounded-full animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <span
-                  className="w-2 h-2 bg-indigo-300 rounded-full animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                />
+              <div className="typing-indicator">
+                <div className="typing-dot" />
+                <div className="typing-dot" />
+                <div className="typing-dot" />
               </div>
             </div>
           </div>
         )}
 
-        {onRetry && messages.length > 0 && messages[messages.length - 1]?.isError && (
-          <div className="flex justify-start">
-            <button
-              type="button"
-              onClick={onRetry}
-              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 transition active:scale-95 hover:bg-white/20"
-            >
-              Retry last query
-            </button>
-          </div>
-        )}
+        {/* Retry Button */}
+        {onRetry &&
+          messages.length > 0 &&
+          messages[messages.length - 1]?.isError && (
+            <div className="flex justify-start w-full">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-xs font-medium text-slate-100 transition hover:bg-white/20 hover:border-white/30 active:scale-95"
+              >
+                <RefreshCw size={14} />
+                Retry last query
+              </button>
+            </div>
+          )}
 
-        {/* Invisible element at the end for auto-scrolling target */}
         <div ref={messagesEndRef} />
       </div>
     </div>

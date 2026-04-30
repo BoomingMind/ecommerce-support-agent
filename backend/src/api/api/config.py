@@ -89,12 +89,13 @@ class AgentState(TypedDict):
         category: The query category determined by triage (billing/refund/general)
         response: The final response text from the specialist agent
     """
-    user_input: str              # User's original query
-    category: str                # Classification result from triage agent
-    response: str                # Final response after routing and validation
-    intermediate_results: dict   # Keyed responses from each specialist agent
-    final_response: str          # Final response after supervisor pass
-    context: str                 # Context summary for the current session
-    conversation_history: list   # Conversation history
-    retry_count: int             # Number of times supervisor has requested a retry
-    needs_retry: bool            # Supervisor signals True to loop back to execution
+    user_input: str
+    category: str
+    response: str
+    intermediate_results: dict
+    final_response: str
+    context: str
+    conversation_history: list
+    retry_count: int
+    needs_retry: bool
+    retrieved_products: list

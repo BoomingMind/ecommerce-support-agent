@@ -19,12 +19,26 @@ import os
 
 # Third-party packages
 from dotenv import load_dotenv  # Loads environment variables from .env file
-from agents import Agent, OpenAIChatCompletionsModel, AsyncOpenAI, Runner, RunConfig
+from agents import Agent, OpenAIChatCompletionsModel, AsyncOpenAI, Runner, RunConfig, ModelSettings
 from typing import TypedDict  # Type hints for the state dictionary
 
 # Load environment variables from .env file
 # This allows API keys and URLs to be stored securely outside the code
 load_dotenv()
+
+REQUIRED_ENV_VARS = ("GROQ_API_KEY", "GROQ_BASE_URL")
+missing_env_vars = [name for name in REQUIRED_ENV_VARS if not os.getenv(name)]
+if missing_env_vars:
+    raise RuntimeError(
+        f"Missing required environment variables: {', '.join(missing_env_vars)}"
+    )
+
+# Optional tuning knob for response length.
+# If unset or invalid, we use a safe default of 128 tokens.
+try:
+    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "128"))
+except ValueError:
+    MAX_OUTPUT_TOKENS = 128
 
 # =============================================================================
 # OpenAI Client Initialization
@@ -56,6 +70,7 @@ model = OpenAIChatCompletionsModel(
 # Configure how agent runs are executed
 config = RunConfig(
     model=model,                      # The model to use
+    model_settings=ModelSettings(max_tokens=MAX_OUTPUT_TOKENS),  # Cap output length globally
     tracing_disabled=True             # Disable OpenAI tracing for privacy/speed
 )
 
@@ -74,6 +89,12 @@ class AgentState(TypedDict):
         category: The query category determined by triage (billing/refund/general)
         response: The final response text from the specialist agent
     """
-    user_input: str   # User's original query
-    category: str      # Classification result from triage agent
-    response: str      # Final response after routing and validation
+    user_input: str              # User's original query
+    category: str                # Classification result from triage agent
+    response: str                # Final response after routing and validation
+    intermediate_results: dict   # Keyed responses from each specialist agent
+    final_response: str          # Final response after supervisor pass
+    context: str                 # Context summary for the current session
+    conversation_history: list   # Conversation history
+    retry_count: int             # Number of times supervisor has requested a retry
+    needs_retry: bool            # Supervisor signals True to loop back to execution

@@ -25,6 +25,22 @@ const AGENT_INFO = {
     label: "Triage Agent",
     color: "bg-blue-50 text-blue-600 border-blue-200"
   },
+  router: {
+    label: "Router Agent",
+    color: "bg-indigo-50 text-indigo-600 border-indigo-200"
+  },
+  context: {
+    label: "Context Agent",
+    color: "bg-cyan-50 text-cyan-700 border-cyan-200"
+  },
+  support: {
+    label: "Support Agent",
+    color: "bg-orange-50 text-orange-600 border-orange-200"
+  },
+  sales: {
+    label: "Sales Agent",
+    color: "bg-pink-50 text-pink-600 border-pink-200"
+  },
   billing: {
     label: "Billing Agent",
     color: "bg-violet-50 text-violet-600 border-violet-200"
@@ -37,8 +53,8 @@ const AGENT_INFO = {
     label: "General Agent",
     color: "bg-slate-50 text-slate-600 border-slate-200"
   },
-  validation: {
-    label: "Validating",
+  supervisor: {
+    label: "Supervisor Agent",
     color: "bg-amber-50 text-amber-600 border-amber-200"
   },
 };

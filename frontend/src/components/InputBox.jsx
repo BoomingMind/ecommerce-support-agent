@@ -37,21 +37,21 @@ function InputBox({ onSend, isLoading }) {
 
   return (
     // Form wraps input and button for native submit handling
-    <form onSubmit={handleSubmit} className="flex w-full gap-3">
+    <form onSubmit={handleSubmit} className="flex w-full gap-3 p-2">
       {/* Text input field */}
       <Input
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Type your message..."
         disabled={isLoading}  // Disable during API calls
-        className="flex-1 bg-white border-neutral-200 focus:border-neutral-900 focus:ring-neutral-900"
+        className="flex-1 rounded-xl border border-white/10 bg-white/5 text-slate-100 placeholder:text-slate-400 focus:border-indigo-400"
       />
 
       {/* Send button */}
       <Button
         type="submit"
         disabled={!input.trim() || isLoading}  // Disable if empty or loading
-        className="h-11 w-11 p-0 bg-neutral-900 hover:bg-neutral-800 text-white"
+        className="send-ripple h-11 w-11 rounded-xl p-0 bg-indigo-500 text-white hover:bg-indigo-400"
       >
         {/* Send icon from lucide-react */}
         <Send className="h-4 w-4" />

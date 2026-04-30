@@ -13,7 +13,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-function MessageBubble({ message, isUser }) {
+function MessageBubble({ message, isUser, isError = false }) {
   return (
     <div
       // Flex container - justify-end for user (right side), justify-start for AI (left side)
@@ -24,10 +24,12 @@ function MessageBubble({ message, isUser }) {
         // User: dark background, white text
         // AI: white background with border and shadow
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+          "max-w-[80%] px-4 py-3 text-sm leading-relaxed shadow-sm transition agent-switch",
           isUser
-            ? "bg-neutral-900 text-white rounded-br-md"
-            : "bg-white text-neutral-900 rounded-bl-md border border-neutral-200"
+            ? "message-user rounded-br-md"
+            : isError
+              ? "message-error rounded-bl-md"
+              : "message-ai rounded-bl-md"
         )}
       >
         {/* Message text content */}

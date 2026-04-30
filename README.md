@@ -203,7 +203,7 @@ Frontend runs at: `http://localhost:5173`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/query` | Non-streaming query (returns complete response) |
-| `GET` | `/api/stream/{query}` | SSE streaming (recommended) |
+| `GET` | `/api/stream?query=<text>` | SSE streaming (recommended) |
 
 ### Example Request
 

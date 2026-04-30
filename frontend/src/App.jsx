@@ -1,194 +1,180 @@
-/**
- * Customer Support Chat Application
- * =================================
- * A React-based chat interface for a multi-agent customer support system.
- * Features:
- * - Real-time streaming responses via Server-Sent Events (SSE)
- * - Agent status indicators showing which agent is processing
- * - Human-like typing delays for natural conversation feel
- *
- * Backend: FastAPI with LangGraph orchestration
- * Frontend: React + Vite + Tailwind CSS + ShadCN UI
- */
-
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import ChatWindow from "./components/ChatWindow";
 import InputBox from "./components/InputBox";
 import AgentStatus from "./components/AgentStatus";
+import AgentSidebar from "./components/AgentSidebar";
+import { fetchAgentManifest } from "./services/api";
+import { openChatStream } from "./utils/sseChat";
 
-// API configuration
-const API_URL = "http://127.0.0.1:8000";
+const STORAGE_KEY = "support-chat-history-v1";
 
-// Mapping of agent categories to frontend display names
-// Used to show which specialist agent is handling the query
-const AGENT_CATEGORY_MAP = {
-  billing: "billing",
-  refund: "refund",
-  general: "general",
-};
-
-/**
- * Main Application Component
- * Manages chat state, message handling, and streaming responses
- */
 function App() {
-  // Chat messages array - each message has text content and isUser flag
   const [messages, setMessages] = useState([]);
-
-  // Loading state - true while waiting for agent response
   const [isLoading, setIsLoading] = useState(false);
-
-  // Current active agent - displayed in the header status badge
   const [currentAgent, setCurrentAgent] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [isAgentListLoading, setIsAgentListLoading] = useState(true);
+  const [lastQuery, setLastQuery] = useState("");
+  const streamRef = useRef(null);
+  const messageIdRef = useRef(0);
 
-  /**
-   * Handles sending a message and processing the streaming response
-   *
-   * Flow:
-   * 1. Add user's message to chat immediately
-   * 2. Set loading state and show triage agent
-   * 3. Connect to SSE stream from backend
-   * 4. Receive response word-by-word with natural delays
-   * 5. Update chat in real-time as chunks arrive
-   *
-   * @param {string} text - The user's input message
-   */
-  const handleSend = useCallback(async (text) => {
-    // Step 1: Add user's message to chat immediately for instant feedback
-    setMessages((prev) => [...prev, { text, isUser: true }]);
+  const createMessage = useCallback((text, isUser, isError = false) => {
+    messageIdRef.current += 1;
+    return { id: messageIdRef.current, text, isUser, isError };
+  }, []);
 
-    // Step 2: Set loading state - this shows typing indicator
-    setIsLoading(true);
-
-    // Show triage agent as the first responder
-    setCurrentAgent("triage");
-
+  useEffect(() => {
     try {
-      // Step 3: Connect to the streaming endpoint
-      // Using EventSource for Server-Sent Events (SSE)
-      const encodedQuery = encodeURIComponent(text);
-      const eventSource = new EventSource(`${API_URL}/api/stream/${encodedQuery}`);
-
-      // Variable to accumulate the full response as chunks arrive
-      let fullResponse = "";
-
-      // Initialize the AI message with empty text
-      // We'll update it as streaming chunks arrive
-      setMessages((prev) => [...prev, { text: "", isUser: false }]);
-
-      // Step 4: Handle incoming stream events
-      eventSource.onmessage = (event) => {
-        // Parse the SSE data (format: {"chunk": "...", "done": false})
-        const data = JSON.parse(event.data);
-
-        // Accumulate the response text
-        fullResponse += data.chunk;
-
-        // Update the last message (AI response) with accumulated text
-        // This creates the effect of the agent typing in real-time
-        setMessages((prev) => {
-          const updated = [...prev];
-          // Only update if the last message is the AI response we're building
-          if (updated.length > 0 && !updated[updated.length - 1].isUser) {
-            updated[updated.length - 1] = { text: fullResponse, isUser: false };
-          }
-          return updated;
-        });
-
-        // Step 5: Check if stream is complete
-        if (data.done) {
-          // Clean up EventSource connection
-          eventSource.close();
-
-          // Update agent status based on the response category
-          // This maps the backend category to the appropriate specialist agent badge
-          const categoryMatch = fullResponse.toLowerCase();
-          if (categoryMatch.includes("billing")) {
-            setCurrentAgent("billing");
-          } else if (categoryMatch.includes("refund")) {
-            setCurrentAgent("refund");
-          } else {
-            setCurrentAgent("general");
-          }
-
-          // Clear loading state after a short delay
-          // The delay lets the user see the final response before removing typing indicator
-          setTimeout(() => {
-            setIsLoading(false);
-            setCurrentAgent(null);
-          }, 300);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
         }
-      };
+      }
+    } catch {
+      // Ignore corrupted local storage and start fresh.
+    }
+  }, []);
 
-      // Handle any errors in the EventSource connection
-      eventSource.onerror = (error) => {
-        console.error("Stream error:", error);
-        eventSource.close();
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-60)));
+  }, [messages]);
 
-        // Show error message in chat
-        setMessages((prev) => {
-          const updated = [...prev];
-          if (updated.length > 0 && !updated[updated.length - 1].isUser) {
-            updated[updated.length - 1] = {
-              text: "Sorry, I encountered an error. Please try again.",
-              isUser: false,
-            };
-          }
-          return updated;
-        });
+  useEffect(() => {
+    const loadAgents = async () => {
+      setIsAgentListLoading(true);
+      try {
+        const manifest = await fetchAgentManifest();
+        setAgents(manifest);
+      } catch {
+        setAgents([]);
+      } finally {
+        setIsAgentListLoading(false);
+      }
+    };
 
-        setIsLoading(false);
-        setCurrentAgent(null);
-      };
+    loadAgents();
+  }, []);
 
-    } catch (error) {
-      // Handle any unexpected errors
-      console.error("Request error:", error);
+  useEffect(() => {
+    return () => {
+      streamRef.current?.close();
+    };
+  }, []);
+
+  const activeAgentName = useMemo(() => {
+    if (!currentAgent) return null;
+    const normalized = currentAgent.toLowerCase();
+    const fromManifest = agents.find((agent) => agent.id?.toLowerCase() === normalized);
+    return fromManifest?.name || currentAgent;
+  }, [agents, currentAgent]);
+
+  const sendMessage = useCallback(
+    (text) => {
+      const query = text.trim();
+      if (!query || isLoading) return;
+
+      streamRef.current?.close();
+      setLastQuery(query);
+      setIsLoading(true);
+      setCurrentAgent("triage");
+
+      const aiMessageId = `ai-${Date.now()}`;
+
       setMessages((prev) => [
         ...prev,
-        { text: "Something went wrong. Please try again.", isUser: false },
+        createMessage(query, true),
+        { id: aiMessageId, text: "", isUser: false, isError: false },
       ]);
-      setIsLoading(false);
-      setCurrentAgent(null);
-    }
-  }, []); // Empty dependency array - function is recreated only on mount
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
+      streamRef.current = openChatStream(query, {
+        onMeta: (payload) => {
+          if (payload?.category) {
+            setCurrentAgent(payload.category);
+          }
+        },
+        onChunk: (chunkText) => {
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === aiMessageId
+                ? { ...message, text: `${message.text}${chunkText}` }
+                : message
+            )
+          );
+        },
+        onDone: () => {
+          setIsLoading(false);
+          setCurrentAgent(null);
+        },
+        onError: (errorText) => {
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === aiMessageId
+                ? {
+                    ...message,
+                    text: errorText || "Sorry, I encountered an error.",
+                    isError: true,
+                  }
+                : message
+            )
+          );
+          setIsLoading(false);
+          setCurrentAgent(null);
+        },
+      });
+    },
+    [createMessage, isLoading]
+  );
+
+  const retryLastQuery = useCallback(() => {
+    if (lastQuery && !isLoading) {
+      sendMessage(lastQuery);
+    }
+  }, [isLoading, lastQuery, sendMessage]);
 
   return (
-    // Main container - full viewport height with flex column layout
-    <div className="flex flex-col h-screen bg-white">
-
-      {/* Header - fixed at top, shows title and agent status */}
-      <header className="flex-shrink-0 border-b border-neutral-100 bg-white">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Left side - App title */}
-          <div>
-            <h1 className="text-lg font-semibold text-neutral-900">
-              E-Commerce AI Customer Support Agent
-            </h1>
-            <p className="text-xs text-neutral-500">
-              Built by Syed Sarim Abbas
-            </p>
+    <div className="page-fade-in">
+      <div className="flex h-screen flex-col text-slate-50">
+        <header className="glass-surface border-b">
+          <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-4 py-3">
+            <div>
+              <h1 className="text-lg font-semibold">E-Commerce AI Support</h1>
+              <p className="text-xs text-slate-400">
+                Real-time multi-agent customer support
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <AgentStatus currentAgent={currentAgent} />
+            </div>
           </div>
+        </header>
 
-          {/* Right side - Agent status indicator */}
-          {/* Shows which specialist agent is currently handling the query */}
-          <AgentStatus currentAgent={currentAgent} />
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <AgentSidebar
+            agents={agents}
+            activeAgentId={currentAgent}
+            isLoadingAgents={isAgentListLoading}
+          />
+
+          <main className="flex min-h-0 flex-1 flex-col">
+            <div className="agent-switch glass-surface border-b px-4 py-2 text-xs text-slate-300">
+              {activeAgentName ? `Active agent: ${activeAgentName}` : "No active agent"}
+            </div>
+
+            <ChatWindow
+              messages={messages}
+              isTyping={isLoading}
+              onRetry={retryLastQuery}
+              activeAgentName={activeAgentName}
+            />
+
+            <footer className="floating-input glass-surface focus-glow">
+              <InputBox onSend={sendMessage} isLoading={isLoading} />
+            </footer>
+          </main>
         </div>
-      </header>
-
-      {/* Chat window - takes remaining vertical space */}
-      <ChatWindow messages={messages} isTyping={isLoading} />
-
-      {/* Footer - fixed at bottom, contains the input box */}
-      <footer className="flex-shrink-0 border-t border-neutral-100 bg-white">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <InputBox onSend={handleSend} isLoading={isLoading} />
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

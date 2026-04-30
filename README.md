@@ -1,6 +1,5 @@
 # E-Commerce AI Customer Support Agent
 
-<!-- Logo placeholder -->
 <div align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi" alt="FastAPI">
@@ -11,23 +10,34 @@
 
 ---
 
- An intelligent customer support system powered by multi-agent orchestration.
+An AI-powered customer support system using a dynamic multi-agent workflow.
 
- Built with LangGraph, FastAPI, and React — designed to handle real-world support scenarios.
+Built with LangGraph, FastAPI, and React for real-time, specialized support responses.
 
 ---
 
 ## Overview
 
-This project demonstrates a **Multi-Agent AI System** where specialized agents collaborate to handle customer queries efficiently. The system uses **LangGraph** for workflow orchestration, implementing a pipeline: **Triage → Route → Execute → Validate**.
+This project implements a manager-style multi-agent architecture:
 
-### Key Features
+**Triage -> Dynamic Execution -> Supervisor -> (Retry or End)**
 
-- **Intelligent Routing** — Queries are classified and routed to the right specialist
-- **Specialized Agents** — Billing, Refund, and General support agents
-- **Response Validation** — Quality assurance before final delivery
-- **Streaming Responses** — Real-time, word-by-word delivery for natural feel
-- **Modern UI** — Clean React frontend with Tailwind CSS
+- **Triage Agent** classifies user intent.
+- **Router Agent** chooses which specialists to call.
+- **Specialist Agents** produce domain-specific responses.
+- **Supervisor Agent** validates quality and can request retries.
+- **FastAPI SSE** streams responses token-by-token to the frontend.
+
+---
+
+## Key Features
+
+- Dynamic multi-agent orchestration with conditional retry loop
+- Specialist agents: context, support, sales, billing, refund, general
+- Supervisor approval/retry format for quality control
+- Real-time SSE streaming (`meta`, `chunk`, `done`, `error`)
+- Frontend agent manifest panel from backend (`/api/agents`)
+- Glassmorphism dark UI with live agent highlighting
 
 ---
 
@@ -38,41 +48,31 @@ This project demonstrates a **Multi-Agent AI System** where specialized agents c
 | **Orchestration** | LangGraph |
 | **Backend** | FastAPI, Python |
 | **Frontend** | React 18, Vite |
-| **Styling** | Tailwind CSS, ShadCN UI |
+| **Styling** | Tailwind CSS, custom glassmorphism theme |
 | **Icons** | Lucide React |
 | **LLM Provider** | Groq (Llama 3.3) |
 
 ---
 
----
-
 ## Architecture
 
-```
+```text
 User Query
-    │
-    ▼
-┌─────────────┐
-│    Triage   │  ← Classifies query (billing / refund / general)
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│   Routing   │  ← Routes to appropriate specialist agent
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Specialist │  ← Billing / Refund / General Agent
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│ Validation  │  ← Quality check and response improvement
-└──────┬──────┘
-       │
-       ▼
-   Final Response
+    |
+    v
+Triage Node
+    |
+    v
+Dynamic Execution Node (Router + Specialists)
+    |
+    v
+Supervisor Node
+    |--------------------|
+    | needs_retry = true |--> back to Dynamic Execution
+    |--------------------|
+             |
+             v
+            END
 ```
 
 ### Workflow Graph
@@ -82,41 +82,49 @@ User Query
 
 ## Project Structure
 
-```
-Customer_Support_Representative/
+```text
+Customer_Support_Respresentative/
 ├── backend/
+│   ├── graphs/
+│   │   ├── generate_graph.py
+│   │   └── agent_graph.png
 │   └── src/
-│       ├── api/
-│       │   ├── main.py                 # FastAPI entry point + SSE streaming
-│       │   ├── api/
-│       │   │   ├── config.py           # Model & RunConfig
-│       │   │   ├── triage_agent.py     # Query classification
-│       │   │   ├── billing_agent.py    # Billing specialist
-│       │   │   ├── refund_agent.py     # Refund specialist
-│       │   │   ├── general_agent.py    # General support
-│       │   │   └── validator.py        # Response QA
-│       │   └── nodes/
-│       │       └── agent_nodes.py  # LangGraph node definitions
-│
+│       └── api/
+│           ├── main.py                    # FastAPI app + endpoints + graph wiring
+│           ├── nodes/
+│           │   └── agent_nodes.py         # Triaging, routing, execution, supervisor logic
+│           └── api/
+│               ├── config.py              # Model, RunConfig, env validation
+│               ├── triage_agent.py
+│               ├── router_agent.py
+│               ├── context_agent.py
+│               ├── support_agent.py
+│               ├── sales_agent.py
+│               ├── billing_agent.py
+│               ├── refund_agent.py
+│               ├── general_agent.py
+│               ├── supervisor_agent.py
+│               └── validator.py           # legacy/optional validator node
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                # Main chat interface
-│   │   ├── components/
-│   │   │   ├── ChatWindow.jsx     # Scrollable message history
-│   │   │   ├── MessageBubble.jsx  # User/AI message bubbles
-│   │   │   ├── InputBox.jsx       # Message input
-│   │   │   ├── AgentStatus.jsx     # Active agent indicator
-│   │   │   └── ui/
-│   │   │       ├── button.jsx
-│   │   │       └── input.jsx
-│   │   ├── lib/
-│   │   │   └── utils.js           # cn() utility
-│   │   └── index.css              # Tailwind imports
-│   ├── index.html
-│   └── package.json
-│
-├── .env                           # API keys
-└── requirements.txt               # Python dependencies
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   ├── services/
+│   │   │   └── api.js                     # API base URL + manifest fetch
+│   │   ├── utils/
+│   │   │   └── sseChat.js                 # SSE stream lifecycle handling
+│   │   └── components/
+│   │       ├── AgentSidebar.jsx
+│   │       ├── AgentStatus.jsx
+│   │       ├── ChatWindow.jsx
+│   │       ├── MessageBubble.jsx
+│   │       ├── InputBox.jsx
+│   │       └── ui/
+│   │           ├── button.jsx
+│   │           └── input.jsx
+├── .env.example
+├── .env
+└── requirements.txt
 ```
 
 ---
@@ -125,26 +133,22 @@ Customer_Support_Representative/
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.9+ (recommended: 3.11/3.12)
 - Node.js 18+
 - Groq API key
 
 ### Backend Setup
 
 ```bash
-# Navigate to project root
-cd Customer_Support_Representative
-
-# Create virtual environment
+# From project root
 python -m venv .venv
 
-# Activate virtual environment
-# On Windows:
+# Windows
 .venv\Scripts\activate
-# On macOS/Linux:
+
+# macOS/Linux
 source .venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -159,14 +163,20 @@ npm install
 
 ## Environment Setup
 
-Create a `.env` file in the project root with your Groq credentials:
+Copy `.env.example` to `.env` and set values:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_BASE_URL=https://api.groq.com/openai/v1
+ALLOWED_ORIGINS=http://localhost:5173
+MAX_OUTPUT_TOKENS=128
 ```
 
-> Get your Groq API key from [console.groq.com](https://console.groq.com/keys)
+Frontend optional env (`frontend/.env`):
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
 
 ---
 
@@ -175,17 +185,10 @@ GROQ_BASE_URL=https://api.groq.com/openai/v1
 ### Start Backend
 
 ```bash
-# From project root, with venv activated
 python -m uvicorn backend.src.api.main:app --reload
 ```
 
-Or using uvicorn directly if installed in your path:
-
-```bash
-uvicorn backend.src.api.main:app --reload --port 8000
-```
-
-Backend runs at: `http://127.0.0.1:8000`
+Backend: `http://127.0.0.1:8000`
 
 ### Start Frontend
 
@@ -194,7 +197,7 @@ cd frontend
 npm run dev
 ```
 
-Frontend runs at: `http://localhost:5173`
+Frontend: `http://localhost:5173`
 
 ---
 
@@ -202,32 +205,17 @@ Frontend runs at: `http://localhost:5173`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/query` | Non-streaming query (returns complete response) |
-| `GET` | `/api/stream?query=<text>` | SSE streaming (recommended) |
+| `GET` | `/api/agents` | Agent manifest (name, role, description) for frontend sidebar |
+| `POST` | `/api/query` | Non-streaming response with category |
+| `GET` | `/api/stream?query=<text>` | SSE streaming response (`meta/chunk/done/error`) |
 
 ### Example Request
 
 ```bash
 curl -X POST http://localhost:8000/api/query \
   -H "Content-Type: application/json" \
-  -d '{"query": "I need a refund for order #12345"}'
+  -d "{\"query\":\"I need a refund for order #12345\"}"
 ```
-
----
-
-## Usage
-
-1. Start the backend server
-2. Start the frontend dev server
-3. Open `http://localhost:5173` in your browser
-4. Type your query in the chat box
-5. Watch the agent status indicator as it processes your query
-
-### Try These Queries
-
-- **Refund:** "I accidentally paid twice for my order. Order #000001. How do I get a refund?"
-- **Billing:** "Can you explain the charge on my latest invoice?"
-- **General:** "What are your shipping options?"
 
 ---
 
@@ -235,22 +223,35 @@ curl -X POST http://localhost:8000/api/query \
 
 | Agent | Purpose |
 |-------|---------|
-| **Triage** | Classifies incoming queries |
-| **Billing** | Handles payment and invoice questions |
-| **Refund** | Processes refund requests |
-| **General** | Handles general inquiries |
-| **Validator** | Quality-checks final responses |
+| **Triage** | Classifies incoming query category |
+| **Router** | Selects specialist agents dynamically |
+| **Context** | Summarizes prior context for better responses |
+| **Support** | Handles complaints and service issues |
+| **Sales** | Handles product and purchase questions |
+| **Billing** | Handles payments and invoice questions |
+| **Refund** | Handles refund requests and refund policy |
+| **General** | Fallback for broad/general support |
+| **Supervisor** | Approves final response or triggers retry |
+
+---
+
+## Generate Workflow Diagram
+
+From project root:
+
+```bash
+python -m backend.graphs.generate_graph
+```
 
 ---
 
 ## Future Improvements
 
-- [ ] Conversation history and context
-- [ ] More specialized agents (Shipping, Returns, Technical)
-- [ ] User authentication
-- [ ] Database integration for order lookup
-- [ ] WebSocket support for bidirectional streaming
-- [ ] Admin dashboard for analytics
+- [ ] Authentication and protected endpoints
+- [ ] Persistent conversation memory/database
+- [ ] Domain tool integrations (orders, invoices, shipping APIs)
+- [ ] Automated backend/frontend integration tests
+- [ ] WebSocket streaming support for richer bi-directional UX
 
 ---
 
